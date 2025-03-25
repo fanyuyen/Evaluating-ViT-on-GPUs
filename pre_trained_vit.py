@@ -8,17 +8,19 @@ import torch
 from tqdm import tqdm
 import subprocess
 
-def log_nvidia_smi():
-    result = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
-    print(result.stdout)
-
+from pynvml import *
+nvmlInit()
+gpu_index_nvml = 1
+handle = nvmlDeviceGetHandleByIndex(gpu_index_nvml)
+gpu_name = nvmlDeviceGetName(handle)
+print(f"Running on GPU (pynvml): {gpu_name}")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Using: ", device)
-batch_size = 128
+print("Running on GPU (pytorch):: ", torch.cuda.get_device_name(0))
+batch_size = 4
 
 # DataLoader
-dataloader = get_cifar10_dataloader(batch_size, train=False)
+dataloader = get_cifar10_dataloader(batch_size, train=False, subset_size=40)
 
 # Model and processor
 processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
@@ -28,6 +30,9 @@ model.eval()
 # Metric tracking
 all_preds = []
 all_labels = []
+
+gpu_utilizations = []
+gpu_memory_usages = []
 
 start_time = time.time()
 torch.cuda.reset_peak_memory_stats(device)
@@ -39,9 +44,16 @@ with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
         preds = logits.argmax(dim=-1).cpu().numpy()
-
+        ##
         all_preds.extend(preds)
         all_labels.extend(labels.numpy())
+        ##
+        # GPU Monitoring
+        util = nvmlDeviceGetUtilizationRates(handle)
+        mem_info = nvmlDeviceGetMemoryInfo(handle)
+        ##
+        gpu_utilizations.append(util.gpu)  # in %
+        gpu_memory_usages.append(mem_info.used / (1024 ** 2))  # in MB
 
 inference_end = time.perf_counter()
 
@@ -50,6 +62,10 @@ total_time = inference_end - inference_start
 num_images = len(dataloader.dataset)
 throughput = num_images / total_time
 peak_memory_MB = torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+
+# GPU usage
+avg_util = sum(gpu_utilizations) / len(gpu_utilizations)
+avg_mem = sum(gpu_memory_usages) / len(gpu_memory_usages)
 
 # # === METRICS ===
 # acc = accuracy_score(all_labels, all_preds)
@@ -64,7 +80,10 @@ print(f"Total images: {num_images}")
 print(f"Total inference time: {total_time:.2f} seconds")
 print(f"Throughput: {throughput:.2f} images/second")
 print(f"Peak VRAM usage: {peak_memory_MB:.2f} MB\n")
-log_nvidia_smi()
+
+print("\n--- GPU Utilization (via pynvml) ---")
+print(f"Average GPU Utilization: {avg_util:.2f}%")
+print(f"Average GPU Memory Usage: {avg_mem:.2f} MB")
 
 
 # print(f"Accuracy:  {acc:.4f}")
