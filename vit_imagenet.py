@@ -7,6 +7,7 @@ import time
 import torch
 from tqdm import tqdm
 import subprocess
+from torchvision import transforms
 
 from pynvml import *
 nvmlInit()
@@ -16,7 +17,7 @@ gpu_name = nvmlDeviceGetName(handle)
 print(f"Running on GPU (pynvml): {gpu_name}")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Running on GPU (pytorch):: ", torch.cuda.get_device_name(0))
+print("Running on GPU (pytorch): ", torch.cuda.get_device_name(0))
 batch_size = 4
 
 # DataLoader
@@ -39,13 +40,29 @@ torch.cuda.reset_peak_memory_stats(device)
 inference_start = time.perf_counter()
 
 with torch.no_grad():
-    for images, labels in tqdm(dataloader, desc="Running Inference"):
-        inputs = processor(images=list(images), return_tensors="pt", do_rescale=False).to(device) # do_rescale=False, since images already scaled
-        outputs = model(**inputs)
-        logits = outputs.logits
-        preds = logits.argmax(dim=-1).cpu().numpy()
+    for batch in tqdm(dataloader, desc="Running Inference"):
+        images = batch["image"]  # Get images from the batch dictionary
+        labels = batch["label"]
+                
+        # Process each image individually to ensure we get predictions for all images
+        batch_preds = []
+        for image in images:
+            # Ensure image has 3 channels if it doesn't already
+            if image.dim() == 2:
+                image = image.unsqueeze(0).repeat(3, 1, 1)  # Add channel dimension and repeat to RGB
+            
+            # Convert tensor to PIL Image
+            image_pil = transforms.ToPILImage()(image)
+            
+            # Process single image
+            inputs = processor(images=image_pil, return_tensors="pt", do_rescale=False).to(device)
+            outputs = model(**inputs)
+            logits = outputs.logits
+            pred = logits.argmax(dim=-1).cpu().numpy()
+            batch_preds.append(pred[0])
+        
         ##
-        all_preds.extend(preds)
+        all_preds.extend(batch_preds)  # Add all predictions from this batch
         all_labels.extend(labels.numpy())
         ##
         # GPU Monitoring
@@ -74,7 +91,7 @@ avg_mem = sum(gpu_memory_usages) / len(gpu_memory_usages)
 # f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
 
 # # === PRINT RESULTS ===
-print(f"\n--- Benchmark Results on CIFAR-10 ---")
+print(f"\n--- Results on ImageNet100 ---")
 print(f"Batch size: {batch_size}")
 print(f"Total images: {num_images}")
 print(f"Total inference time: {total_time:.2f} seconds")
@@ -84,7 +101,6 @@ print(f"Peak VRAM usage: {peak_memory_MB:.2f} MB\n")
 print("\n--- GPU Utilization (via pynvml) ---")
 print(f"Average GPU Utilization: {avg_util:.2f}%")
 print(f"Average GPU Memory Usage: {avg_mem:.2f} MB")
-
 
 # print(f"Accuracy:  {acc:.4f}")
 # print(f"Precision: {prec:.4f}")
