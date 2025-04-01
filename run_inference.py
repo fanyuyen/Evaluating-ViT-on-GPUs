@@ -10,6 +10,8 @@ from pynvml import *
 import pandas as pd
 import socket
 import datetime
+import nvtx
+
 
 class GPUMonitor:
     def __init__(self, gpu_index=1):
@@ -219,8 +221,9 @@ def main():
             for batch_size in batch_sizes:
                 try:
                     print(f"\nTesting {dataset_name} with batch size: {batch_size}")
-                    runner = InferenceRunner(dataset_name, batch_size, subset_size=config['test_size'])
-                    result = runner.run_inference()
+                    with nvtx.annotate(f"{dataset_name} | batch_size={batch_size}", color="blue"):
+                        runner = InferenceRunner(dataset_name, batch_size, subset_size=config['test_size'])
+                        result = runner.run_inference()
                     
                     # Add host and timestamp information
                     result.update({
