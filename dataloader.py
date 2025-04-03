@@ -106,7 +106,7 @@ def get_imagenet100_dataloader(batch_size, train=True, subset_size=None):
             pin_memory=True,
             drop_last=False,
             collate_fn=lambda batch: {
-                'image': torch.stack([item['image'] for item in batch]),
+                'image': torch.stack([item['image'].repeat(3, 1, 1) if item['image'].size(0) == 1 else item['image'] for item in batch]),
                 'label': torch.tensor([item['label'] for item in batch])
             }
         )

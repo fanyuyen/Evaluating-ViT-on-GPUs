@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import glob
+import argparse
 
 # Create directories for organizing outputs
 def create_directories():
@@ -93,10 +94,14 @@ def plot_dataset_performance(df, dataset_name, gpu_name, output_dirs):
     plt.close()
     print(f"Generated plots for {dataset_name} on {gpu_name}")
 
-def plot_comparative_analysis(df_all, output_dirs):
+def plot_comparative_analysis(df_all, output_dirs, hosts=None):
     """Generate and save comparative analysis plots across datasets"""
     datasets = df_all['dataset'].unique()
     gpus = df_all['gpu_name'].unique()
+    
+    # Filter by hosts if specified
+    if hosts:
+        df_all = df_all[df_all['hostname'].isin(hosts)]
     
     # Create comparative plots - first by dataset
     metrics = [
@@ -165,10 +170,15 @@ def plot_comparative_analysis(df_all, output_dirs):
             plt.savefig(plot_path, dpi=300, bbox_inches='tight')
             plt.close()
 
-def generate_statistics(df_all, output_dirs):
+def generate_statistics(df_all, output_dirs, hosts=None):
     """Generate and save comparative statistics"""
     datasets = df_all['dataset'].unique()
     gpus = df_all['gpu_name'].unique()
+    
+    # Filter by hosts if specified
+    if hosts:
+        df_all = df_all[df_all['hostname'].isin(hosts)]
+    
     stats_list = []
     
     for dataset in datasets:
@@ -197,17 +207,15 @@ def generate_statistics(df_all, output_dirs):
     else:
         return pd.DataFrame()
 
-def load_all_results():
-    """Find and load all the result files from different runs"""
-    # Find all output directories
-    output_dirs = glob.glob('outputs_*')
+def load_results(input_dirs):
+    """Load results from multiple input directories"""
     all_results = []
     
-    for output_dir in output_dirs:
-        print(f"Processing results from {output_dir}")
+    for input_dir in input_dirs:
+        print(f"Processing results from {input_dir}")
         
         # Find dataset-specific files
-        dataset_files = glob.glob(os.path.join(output_dir, 'data', 'gpu_performance_results_*_*.csv'))
+        dataset_files = glob.glob(os.path.join(input_dir, 'data', 'gpu_performance_results_*_*.csv'))
         for file_path in dataset_files:
             if 'all' not in file_path:  # Skip the combined files
                 try:
@@ -224,10 +232,17 @@ def load_all_results():
         return pd.DataFrame()
 
 def main():
+    parser = argparse.ArgumentParser(description='Generate performance analysis plots')
+    parser.add_argument('--input_dirs', type=str, nargs='+', required=True, 
+                      help='Input directories containing the results (can specify multiple)')
+    parser.add_argument('--hosts', type=str, nargs='+', default=['huo', 'jin'], 
+                      help='Hosts to analyze (default: huo jin)')
+    args = parser.parse_args()
+    
     output_dirs = create_directories()
     
-    # Load all results from all output directories
-    df_all = load_all_results()
+    # Load results from all specified input directories
+    df_all = load_results(args.input_dirs)
     
     if df_all.empty:
         print("No results were loaded. Exiting.")
@@ -249,8 +264,8 @@ def main():
     
     # Create comparative analysis
     if not df_all.empty:
-        plot_comparative_analysis(df_all, output_dirs)
-        stats_df = generate_statistics(df_all, output_dirs)
+        plot_comparative_analysis(df_all, output_dirs, hosts=args.hosts)
+        stats_df = generate_statistics(df_all, output_dirs, hosts=args.hosts)
         
         if not stats_df.empty:
             print("\nComparative Statistics:")

@@ -195,12 +195,12 @@ def main():
     
     # Configure datasets and their maximum validation set sizes
     dataset_configs = {
-        'cifar10': {'max_size': 10000, 'test_size': 40},
-        'imagenet100': {'max_size': 5000, 'test_size': 40},
-        'food101': {'max_size': 25250, 'test_size': 40}
+        'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set
+        'imagenet100': {'max_size': 5000, 'test_size': 5000},  # Full validation set
+        'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set
     }
     
-    batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+    batch_sizes = [1, 8, 16, 32, 64, 128]
     results = []
     
     # Run inference for each dataset and batch size

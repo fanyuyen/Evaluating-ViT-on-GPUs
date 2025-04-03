@@ -1,0 +1,265 @@
+[1mdiff --git a/README.md b/README.md[m
+[1mindex e69de29..c5a7e0f 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -0,0 +1,126 @@[m
+[32m+[m[32m# GPU Performance Benchmarking for Vision Transformers[m
+[32m+[m
+[32m+[m[32mThis project provides a comprehensive benchmarking tool for evaluating GPU performance when running inference with Vision Transformer (ViT) models across different datasets and batch sizes.[m
+[32m+[m
+[32m+[m[32m## Features[m
+[32m+[m
+[32m+[m[32m- Supports multiple datasets:[m
+[32m+[m[32m  - CIFAR-10 (10,000 validation images)[m
+[32m+[m[32m  - ImageNet-100 (5,000 validation images)[m
+[32m+[m[32m  - Food101 (25,250 validation images)[m
+[32m+[m[32m- Comprehensive GPU metrics collection:[m
+[32m+[m[32m  - GPU utilization[m
+[32m+[m[32m  - Memory usage[m
+[32m+[m[32m  - Temperature[m
+[32m+[m[32m  - Power consumption[m
+[32m+[m[32m  - Latency statistics[m
+[32m+[m[32m- Automated performance testing across different batch sizes[m
+[32m+[m[32m- Detailed CSV output with all metrics[m
+[32m+[m[32m- NVTX profiling support for detailed performance analysis[m
+[32m+[m
+[32m+[m[32m## Requirements[m
+[32m+[m
+[32m+[m[32m- Python 3.7+[m
+[32m+[m[32m- PyTorch[m
+[32m+[m[32m- Transformers (Hugging Face)[m
+[32m+[m[32m- datasets (Hugging Face)[m
+[32m+[m[32m- torchvision[m
+[32m+[m[32m- pynvml (for GPU monitoring)[m
+[32m+[m[32m- nvtx (for profiling)[m
+[32m+[m[32m- pandas[m
+[32m+[m[32m- tqdm[m
+[32m+[m
+[32m+[m[32m## Installation[m
+[32m+[m
+[32m+[m[32m1. Clone the repository:[m
+[32m+[m[32m```bash[m
+[32m+[m[32mgit clone git@github.com:fanyuyen/Evaluating-ViT-on-GPUs.git[m
+[32m+[m[32mcd Evaluating-ViT-on-GPUs[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m2. Install the required packages:[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpip install torch torchvision transformers datasets pynvml nvtx pandas tqdm[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## Usage[m
+[32m+[m
+[32m+[m[32m### Running the Benchmark[m
+[32m+[m
+[32m+[m[32mTo run the benchmark with full dataset sizes:[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpython run_inference.py[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mThe script will:[m
+[32m+[m[32m1. Create output directories with timestamps[m
+[32m+[m[32m2. Run inference on each dataset with different batch sizes (1, 8, 16, 32, 64, 128)[m
+[32m+[m[32m3. Collect comprehensive GPU metrics[m
+[32m+[m[32m4. Save results in CSV format[m
+[32m+[m
+[32m+[m[32m### Analyzing Results with Plots[m
+[32m+[m
+[32m+[m[32mTo generate performance analysis plots and statistics:[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpython plot_performance.py --input_dirs <output_dir1> <output_dir2> ...[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mFor example, to compare results between two machines:[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpython plot_performance.py --input_dirs outputs_huo_20250403_154549 outputs_jin_20250403_155132[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mThe script will:[m
+[32m+[m[32m1. Load results from all specified directories[m
+[32m+[m[32m2. Generate individual performance plots for each GPU[m
+[32m+[m[32m3. Create comparative plots showing GPU performance across different machines[m
+[32m+[m[32m4. Generate statistics comparing all GPUs[m
+[32m+[m[32m5. Save outputs in the `analysis_results` directory:[m
+[32m+[m[32m   - Individual plots in `analysis_results/plots/`[m
+[32m+[m[32m   - Statistics in `analysis_results/stats/comparative_statistics.csv`[m
+[32m+[m
+[32m+[m[32m### Output Structure[m
+[32m+[m
+[32m+[m[32mThe script creates a directory structure:[m
+[32m+[m[32m```[m
+[32m+[m[32moutputs_[hostname]_[timestamp]/[m
+[32m+[m[32m├── data/           # CSV files with benchmark results[m
+[32m+[m[32m├── plots/          # (Reserved for future visualization)[m
+[32m+[m[32m└── stats/          # (Reserved for future statistical analysis)[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### Results Format[m
+[32m+[m
+[32m+[m[32mThe CSV output includes:[m
+[32m+[m[32m- Dataset information[m
+[32m+[m[32m- Batch size[m
+[32m+[m[32m- Total inference time[m
+[32m+[m[32m- Throughput (images/second)[m
+[32m+[m[32m- Peak VRAM usage[m
+[32m+[m[32m- GPU utilization[m
+[32m+[m[32m- GPU temperature[m
+[32m+[m[32m- Latency statistics (average, p95, p99)[m
+[32m+[m[32m- GPU information (name, memory, compute capability)[m
+[32m+[m
+[32m+[m[32m## GPU Requirements[m
+[32m+[m
+[32m+[m[32m- NVIDIA GPU with CUDA support[m
+[32m+[m[32m- Sufficient VRAM for the model and batch sizes[m
+[32m+[m[32m- NVML (NVIDIA Management Library) support[m
+[32m+[m
+[32m+[m[32m## Notes[m
+[32m+[m
+[32m+[m[32m- The script uses the ViT-Base model (patch16-224) from Google[m
+[32m+[m[32m- Images are resized to 224x224 before processing[m
+[32m+[m[32m- Results are saved with hostname and timestamp for easy tracking[m
+[32m+[m[32m- The script includes error handling and will continue testing even if some configurations fail[m
+[32m+[m
+[32m+[m[32m## Future Improvements[m
+[32m+[m
+[32m+[m[32m- Add visualization of results[m
+[32m+[m[32m- Support for more models and datasets[m
+[32m+[m[32m- Additional performance metrics[m
+[32m+[m[32m- Automated report generation[m
+[32m+[m[32m- Support for distributed testing[m
+[1mdiff --git a/dataloader.py b/dataloader.py[m
+[1mindex ad74a41..1839155 100644[m
+[1m--- a/dataloader.py[m
+[1m+++ b/dataloader.py[m
+[36m@@ -106,7 +106,7 @@[m [mdef get_imagenet100_dataloader(batch_size, train=True, subset_size=None):[m
+             pin_memory=True,[m
+             drop_last=False,[m
+             collate_fn=lambda batch: {[m
+[31m-                'image': torch.stack([item['image'] for item in batch]),[m
+[32m+[m[32m                'image': torch.stack([item['image'].repeat(3, 1, 1) if item['image'].size(0) == 1 else item['image'] for item in batch]),[m
+                 'label': torch.tensor([item['label'] for item in batch])[m
+             }[m
+         )[m
+[1mdiff --git a/plot_performance.py b/plot_performance.py[m
+[1mindex 65c133e..ddedc70 100644[m
+[1m--- a/plot_performance.py[m
+[1m+++ b/plot_performance.py[m
+[36m@@ -3,6 +3,7 @@[m [mimport matplotlib.pyplot as plt[m
+ import numpy as np[m
+ import os[m
+ import glob[m
+[32m+[m[32mimport argparse[m
+ [m
+ # Create directories for organizing outputs[m
+ def create_directories():[m
+[36m@@ -93,11 +94,15 @@[m [mdef plot_dataset_performance(df, dataset_name, gpu_name, output_dirs):[m
+     plt.close()[m
+     print(f"Generated plots for {dataset_name} on {gpu_name}")[m
+ [m
+[31m-def plot_comparative_analysis(df_all, output_dirs):[m
+[32m+[m[32mdef plot_comparative_analysis(df_all, output_dirs, hosts=None):[m
+     """Generate and save comparative analysis plots across datasets"""[m
+     datasets = df_all['dataset'].unique()[m
+     gpus = df_all['gpu_name'].unique()[m
+     [m
+[32m+[m[32m    # Filter by hosts if specified[m
+[32m+[m[32m    if hosts:[m
+[32m+[m[32m        df_all = df_all[df_all['hostname'].isin(hosts)][m
+[32m+[m[41m    [m
+     # Create comparative plots - first by dataset[m
+     metrics = [[m
+         ('throughput', 'Throughput (images/second)'),[m
+[36m@@ -165,10 +170,15 @@[m [mdef plot_comparative_analysis(df_all, output_dirs):[m
+             plt.savefig(plot_path, dpi=300, bbox_inches='tight')[m
+             plt.close()[m
+ [m
+[31m-def generate_statistics(df_all, output_dirs):[m
+[32m+[m[32mdef generate_statistics(df_all, output_dirs, hosts=None):[m
+     """Generate and save comparative statistics"""[m
+     datasets = df_all['dataset'].unique()[m
+     gpus = df_all['gpu_name'].unique()[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Filter by hosts if specified[m
+[32m+[m[32m    if hosts:[m
+[32m+[m[32m        df_all = df_all[df_all['hostname'].isin(hosts)][m
+[32m+[m[41m    [m
+     stats_list = [][m
+     [m
+     for dataset in datasets:[m
+[36m@@ -197,17 +207,15 @@[m [mdef generate_statistics(df_all, output_dirs):[m
+     else:[m
+         return pd.DataFrame()[m
+ [m
+[31m-def load_all_results():[m
+[31m-    """Find and load all the result files from different runs"""[m
+[31m-    # Find all output directories[m
+[31m-    output_dirs = glob.glob('outputs_*')[m
+[32m+[m[32mdef load_results(input_dirs):[m
+[32m+[m[32m    """Load results from multiple input directories"""[m
+     all_results = [][m
+     [m
+[31m-    for output_dir in output_dirs:[m
+[31m-        print(f"Processing results from {output_dir}")[m
+[32m+[m[32m    for input_dir in input_dirs:[m
+[32m+[m[32m        print(f"Processing results from {input_dir}")[m
+         [m
+         # Find dataset-specific files[m
+[31m-        dataset_files = glob.glob(os.path.join(output_dir, 'data', 'gpu_performance_results_*_*.csv'))[m
+[32m+[m[32m        dataset_files = glob.glob(os.path.join(input_dir, 'data', 'gpu_performance_results_*_*.csv'))[m
+         for file_path in dataset_files:[m
+             if 'all' not in file_path:  # Skip the combined files[m
+                 try:[m
+[36m@@ -224,10 +232,17 @@[m [mdef load_all_results():[m
+         return pd.DataFrame()[m
+ [m
+ def main():[m
+[32m+[m[32m    parser = argparse.ArgumentParser(description='Generate performance analysis plots')[m
+[32m+[m[32m    parser.add_argument('--input_dirs', type=str, nargs='+', required=True,[m[41m [m
+[32m+[m[32m                      help='Input directories containing the results (can specify multiple)')[m
+[32m+[m[32m    parser.add_argument('--hosts', type=str, nargs='+', default=['huo', 'jin'],[m[41m [m
+[32m+[m[32m                      help='Hosts to analyze (default: huo jin)')[m
+[32m+[m[32m    args = parser.parse_args()[m
+[32m+[m[41m    [m
+     output_dirs = create_directories()[m
+     [m
+[31m-    # Load all results from all output directories[m
+[31m-    df_all = load_all_results()[m
+[32m+[m[32m    # Load results from all specified input directories[m
+[32m+[m[32m    df_all = load_results(args.input_dirs)[m
+     [m
+     if df_all.empty:[m
+         print("No results were loaded. Exiting.")[m
+[36m@@ -249,8 +264,8 @@[m [mdef main():[m
+     [m
+     # Create comparative analysis[m
+     if not df_all.empty:[m
+[31m-        plot_comparative_analysis(df_all, output_dirs)[m
+[31m-        stats_df = generate_statistics(df_all, output_dirs)[m
+[32m+[m[32m        plot_comparative_analysis(df_all, output_dirs, hosts=args.hosts)[m
+[32m+[m[32m        stats_df = generate_statistics(df_all, output_dirs, hosts=args.hosts)[m
+         [m
+         if not stats_df.empty:[m
+             print("\nComparative Statistics:")[m
+[1mdiff --git a/run_inference.py b/run_inference.py[m
+[1mindex 77c4a7a..1136225 100644[m
+[1m--- a/run_inference.py[m
+[1m+++ b/run_inference.py[m
+[36m@@ -195,12 +195,12 @@[m [mdef main():[m
+     [m
+     # Configure datasets and their maximum validation set sizes[m
+     dataset_configs = {[m
+[31m-        'cifar10': {'max_size': 10000, 'test_size': 40},[m
+[31m-        'imagenet100': {'max_size': 5000, 'test_size': 40},[m
+[31m-        'food101': {'max_size': 25250, 'test_size': 40}[m
+[32m+[m[32m        'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set[m
+[32m+[m[32m        'imagenet100': {'max_size': 5000, 'test_size': 5000},  # Full validation set[m
+[32m+[m[32m        'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set[m
+     }[m
+     [m
+[31m-    batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256][m
+[32m+[m[32m    batch_sizes = [1, 8, 16, 32, 64, 128][m
+     results = [][m
+     [m
+     # Run inference for each dataset and batch size[m
