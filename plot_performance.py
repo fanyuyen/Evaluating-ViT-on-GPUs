@@ -24,7 +24,7 @@ plt.style.use('default')
 
 def plot_dataset_performance(df, dataset_name, gpu_name, output_dirs):
     """Generate and save performance analysis plots for a single dataset"""
-    fig = plt.figure(figsize=(20, 15))
+    fig = plt.figure(figsize=(15, 10))
     gs = fig.add_gridspec(3, 2)
 
     # 1. Throughput vs Batch Size
@@ -112,43 +112,51 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
         ('gpu_power', 'Power Usage (W)')
     ]
     
-    # Plot by dataset (for each GPU)
-    for gpu in gpus:
-        df_gpu = df_all[df_all['gpu_name'] == gpu]
-        for metric, ylabel in metrics:
-            if metric not in df_gpu.columns:
-                continue
-                
-            plt.figure(figsize=(12, 8))
-            for dataset in datasets:
-                df_dataset = df_gpu[df_gpu['dataset'] == dataset]
-                if not df_dataset.empty:
+    # Define colors and line styles for better visualization
+    colors = ['blue', 'red', 'green', 'orange']
+    line_styles = ['-', '--']
+    markers = ['o', 's']
+    
+    # Plot metrics with both GPUs in the same figure
+    for metric, ylabel in metrics:
+        if metric not in df_all.columns:
+            continue
+            
+        plt.figure(figsize=(10, 6))
+        
+        for i, dataset in enumerate(datasets):
+            for j, gpu in enumerate(gpus):
+                df_subset = df_all[(df_all['dataset'] == dataset) & (df_all['gpu_name'] == gpu)]
+                if not df_subset.empty:
                     if metric == 'avg_latency':
                         # Convert to milliseconds for latency
-                        plt.plot(df_dataset['batch_size'], df_dataset[metric]*1000, 
-                                marker='o', linewidth=2, label=dataset)
+                        plt.plot(df_subset['batch_size'], df_subset[metric]*1000,
+                                marker=markers[j], linestyle=line_styles[j], color=colors[i],
+                                linewidth=2, label=f'{dataset} - {gpu}')
                     else:
-                        plt.plot(df_dataset['batch_size'], df_dataset[metric], 
-                                marker='o', linewidth=2, label=dataset)
-            
-            plt.xlabel('Batch Size')
-            plt.ylabel(ylabel)
-            plt.title(f'Comparative {ylabel} Across Datasets on {gpu}')
-            plt.legend()
-            plt.grid(True)
-            
-            plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_by_dataset_{gpu}.png')
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            plt.close()
+                        plt.plot(df_subset['batch_size'], df_subset[metric],
+                                marker=markers[j], linestyle=line_styles[j], color=colors[i],
+                                linewidth=2, label=f'{dataset} - {gpu}')
+        
+        plt.xlabel('Batch Size')
+        plt.ylabel(ylabel)
+        plt.title(f'Comparative {ylabel} Across Datasets and GPUs')
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.grid(True)
+        plt.tight_layout()
+        
+        plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_combined.png')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
     
-    # Plot by GPU (for each dataset)
+    # Plot dataset-specific comparisons
     for dataset in datasets:
         df_dataset = df_all[df_all['dataset'] == dataset]
         for metric, ylabel in metrics:
             if metric not in df_dataset.columns:
                 continue
                 
-            plt.figure(figsize=(12, 8))
+            plt.figure(figsize=(8, 6))
             for gpu in gpus:
                 df_gpu = df_dataset[df_dataset['gpu_name'] == gpu]
                 if not df_gpu.empty:
@@ -162,9 +170,10 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
             
             plt.xlabel('Batch Size')
             plt.ylabel(ylabel)
-            plt.title(f'Comparative {ylabel} for {dataset} Across GPUs')
+            plt.title(f'Comparative {ylabel} for {dataset}')
             plt.legend()
             plt.grid(True)
+            plt.tight_layout()
             
             plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_by_gpu_{dataset}.png')
             plt.savefig(plot_path, dpi=300, bbox_inches='tight')
