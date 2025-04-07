@@ -59,6 +59,17 @@ The script will:
 3. Collect comprehensive GPU metrics
 4. Save results in CSV format
 
+### Running the Benchmark with Nsight system
+
+```bash
+nsys profile --trace=cuda,nvtx,cudnn,osrt --stats=true --output=<device_name> python run_inference.py
+```
+e.g.
+```bash
+nsys profile --trace=cuda,nvtx,cudnn,osrt --stats=true --output=huo python run_inference.py
+```
+
+
 ### Analyzing Results with Plots
 
 To generate performance analysis plots and statistics:
