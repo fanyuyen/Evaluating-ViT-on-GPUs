@@ -99,6 +99,11 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
     datasets = df_all['dataset'].unique()
     gpus = df_all['gpu_name'].unique()
     
+    # Print available GPU names for debugging
+    print("\nAvailable GPUs in data:")
+    for gpu in gpus:
+        print(f"- {gpu}")
+    
     # Filter by hosts if specified
     if hosts:
         df_all = df_all[df_all['hostname'].isin(hosts)]
@@ -112,31 +117,39 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
         ('gpu_power', 'Power Usage (W)')
     ]
     
-    # Define colors and line styles for better visualization
-    colors = ['blue', 'red', 'green', 'orange']
-    line_styles = ['-', '--']
-    markers = ['o', 's']
+    # Define colors and markers for GPUs
+    gpu_colors = {
+        'NVIDIA A100': 'blue',  # Alternative name
+        'NVIDIA GeForce RTX 4070 Ti SUPER': 'green',  # Alternative name
+        'NVIDIA GeForce RTX 2080 SUPER': 'red'  # Alternative name
+    }
     
-    # Plot metrics with both GPUs in the same figure
+    markers = ['o', 's', '^', 'D', 'p']
+    
+    # Plot metrics with all GPUs in the same figure
     for metric, ylabel in metrics:
         if metric not in df_all.columns:
             continue
             
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(10, 5))
         
-        for i, dataset in enumerate(datasets):
-            for j, gpu in enumerate(gpus):
+        for i, gpu in enumerate(gpus):
+            for j, dataset in enumerate(datasets):
                 df_subset = df_all[(df_all['dataset'] == dataset) & (df_all['gpu_name'] == gpu)]
                 if not df_subset.empty:
+                    # Try to find a matching color, default to gray if not found
+                    color = next((color for name, color in gpu_colors.items() if name in gpu), 'gray')
+                    print(f"Using color {color} for GPU: {gpu}")  # Debug print
+                    
                     if metric == 'avg_latency':
                         # Convert to milliseconds for latency
                         plt.plot(df_subset['batch_size'], df_subset[metric]*1000,
-                                marker=markers[j], linestyle=line_styles[j], color=colors[i],
-                                linewidth=2, label=f'{dataset} - {gpu}')
+                                marker=markers[j], linestyle='-', color=color,
+                                linewidth=2, label=f'{gpu} - {dataset}')
                     else:
                         plt.plot(df_subset['batch_size'], df_subset[metric],
-                                marker=markers[j], linestyle=line_styles[j], color=colors[i],
-                                linewidth=2, label=f'{dataset} - {gpu}')
+                                marker=markers[j], linestyle='-', color=color,
+                                linewidth=2, label=f'{gpu} - {dataset}')
         
         plt.xlabel('Batch Size')
         plt.ylabel(ylabel)
@@ -156,17 +169,18 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
             if metric not in df_dataset.columns:
                 continue
                 
-            plt.figure(figsize=(8, 6))
-            for gpu in gpus:
+            plt.figure(figsize=(10, 6))
+            for i, gpu in enumerate(gpus):
                 df_gpu = df_dataset[df_dataset['gpu_name'] == gpu]
                 if not df_gpu.empty:
+                    color = gpu_colors.get(gpu, 'gray')
                     if metric == 'avg_latency':
                         # Convert to milliseconds for latency
                         plt.plot(df_gpu['batch_size'], df_gpu[metric]*1000, 
-                                marker='o', linewidth=2, label=gpu)
+                                marker=markers[i], linewidth=2, color=color, label=gpu)
                     else:
                         plt.plot(df_gpu['batch_size'], df_gpu[metric], 
-                                marker='o', linewidth=2, label=gpu)
+                                marker=markers[i], linewidth=2, color=color, label=gpu)
             
             plt.xlabel('Batch Size')
             plt.ylabel(ylabel)
@@ -243,10 +257,14 @@ def load_results(input_dirs):
 def main():
     parser = argparse.ArgumentParser(description='Generate performance analysis plots')
     parser.add_argument('--input_dirs', type=str, nargs='+', required=True, 
-                      help='Input directories containing the results (can specify multiple)')
-    parser.add_argument('--hosts', type=str, nargs='+', default=['huo', 'jin'], 
-                      help='Hosts to analyze (default: huo jin)')
+                      help='Input directories containing the results (specify three directories)')
+    parser.add_argument('--hosts', type=str, nargs='+', default=['huo', 'jin', 'tian'], 
+                      help='Hosts to analyze (default: huo jin tian)')
     args = parser.parse_args()
+    
+    if len(args.input_dirs) != 3:
+        print("Error: Please specify exactly three input directories")
+        return
     
     output_dirs = create_directories()
     
