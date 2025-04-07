@@ -97,9 +97,7 @@ The script will:
 The script creates a directory structure:
 ```
 outputs_[hostname]_[timestamp]/
-├── data/           # CSV files with benchmark results
-├── plots/          # (Reserved for future visualization)
-└── stats/          # (Reserved for future statistical analysis)
+└──  data/           # CSV files with benchmark results
 ```
 
 ### Results Format
