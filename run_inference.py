@@ -14,13 +14,30 @@ import nvtx
 
 
 class GPUMonitor:
-    def __init__(self, gpu_index=1):
+    def __init__(self, gpu_index=0):
         nvmlInit()
         self.handle = nvmlDeviceGetHandleByIndex(gpu_index)
         self.gpu_name = nvmlDeviceGetName(self.handle)
         self.gpu_memory = nvmlDeviceGetMemoryInfo(self.handle).total / (1024 ** 3)  # Convert to GB
         self.gpu_compute_capability = nvmlDeviceGetCudaComputeCapability(self.handle)
         self.gpu_uuid = nvmlDeviceGetUUID(self.handle)
+        
+        # Validate that PyTorch and NVML are using the same GPU
+        torch_index = torch.cuda.current_device()
+        torch_device = torch.cuda.get_device_properties(torch_index)
+        torch_uuid = str(torch_device.uuid)
+        nvml_uuid_normalized = self.gpu_uuid[4:] if self.gpu_uuid.startswith('GPU-') else self.gpu_uuid
+        
+        if torch_uuid != nvml_uuid_normalized:
+            raise RuntimeError(
+                f"  UUID mismatch!\n"
+                f"  PyTorch device {torch_index} UUID: {torch_uuid}\n"
+                f"  NVML device {gpu_index} UUID: {self.gpu_uuid}\n"
+                f"Make sure you're comparing the same physical GPU."
+            )
+        else:
+            print(f"UUID match confirmed: PyTorch GPU {torch_index} ↔ NVML GPU {gpu_index}")
+        
         print(f"Running on GPU (pynvml): {self.gpu_name}")
         print(f"GPU Memory: {self.gpu_memory:.1f} GB")
         print(f"Compute Capability: {self.gpu_compute_capability[0]}.{self.gpu_compute_capability[1]}")
@@ -63,7 +80,8 @@ class InferenceRunner:
         self.model.eval()
         
         # Setup GPU monitor
-        self.gpu_monitor = GPUMonitor()
+        #self.gpu_monitor = GPUMonitor() # For jin (4070)
+        self.gpu_monitor = GPUMonitor(gpu_index=1) # For huo (A100)
         
         # Setup dataloader with proper subset handling
         self.dataloader = self._get_dataloader()
@@ -179,9 +197,7 @@ def create_output_dirs():
     base_dir = f"outputs_{hostname}_{timestamp}"
     
     dirs = {
-        'data': os.path.join(base_dir, 'data'),
-        'plots': os.path.join(base_dir, 'plots'),
-        'stats': os.path.join(base_dir, 'stats')
+        'data': os.path.join(base_dir, 'data')
     }
     for dir_path in dirs.values():
         os.makedirs(dir_path, exist_ok=True)
@@ -195,9 +211,9 @@ def main():
     
     # Configure datasets and their maximum validation set sizes
     dataset_configs = {
-        'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set
+        # 'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set
         'imagenet100': {'max_size': 5000, 'test_size': 5000},  # Full validation set
-        'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set
+        # 'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set
     }
     
     batch_sizes = [1, 8, 16, 32, 64, 128]
