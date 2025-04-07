@@ -5,3 +5,5 @@ __pycache__/
 *.png
 *.sqlite
 *.nsys-rep
+*.html
+*.qdstrm

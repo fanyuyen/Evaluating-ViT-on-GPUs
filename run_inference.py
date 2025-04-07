@@ -80,8 +80,8 @@ class InferenceRunner:
         self.model.eval()
         
         # Setup GPU monitor
-        #self.gpu_monitor = GPUMonitor() # For jin (4070)
-        self.gpu_monitor = GPUMonitor(gpu_index=1) # For huo (A100)
+        self.gpu_monitor = GPUMonitor() # For jin (4070) and tian (2080)
+        #self.gpu_monitor = GPUMonitor(gpu_index=1) # For huo (A100)
         
         # Setup dataloader with proper subset handling
         self.dataloader = self._get_dataloader()
@@ -211,9 +211,9 @@ def main():
     
     # Configure datasets and their maximum validation set sizes
     dataset_configs = {
-        # 'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set
+        'cifar10': {'max_size': 10000, 'test_size': 10000},  # Full validation set
         'imagenet100': {'max_size': 5000, 'test_size': 5000},  # Full validation set
-        # 'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set
+        'food101': {'max_size': 25250, 'test_size': 25250}  # Full validation set
     }
     
     batch_sizes = [1, 8, 16, 32, 64, 128]
