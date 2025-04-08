@@ -188,7 +188,7 @@ python plot_finetune_performance.py
 python plot_finetune_performance.py --metrics_file outputs_finetune_huo_20250407_215953/training_metrics.json
 
 # Compare metrics from multiple training runs
-python plot_finetune_performance.py --metrics_files outputs_finetune_huo_20250407_215953/training_metrics.json outputs_finetune_jin_20250407_220321/training_metrics.json
+python plot_finetune_performance.py --metrics_files outputs_finetune_huo_20250408_110200/training_metrics.json outputs_finetune_jin_20250408_113959/training_metrics.json outputs_finetune_tian_20250408_111630/training_metrics.json
 
 # Specify custom output directory
 python plot_finetune_performance.py --metrics_files file1.json file2.json --output_dir my_comparison_results

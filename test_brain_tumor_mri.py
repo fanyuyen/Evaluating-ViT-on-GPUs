@@ -113,7 +113,7 @@ def evaluate_model(model, processor, test_loader, class_names):
     df_metrics.to_csv(os.path.join(output_dir, 'gpu_performance_metrics.csv'), index=False)
     
     # Plot confusion matrix
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
                 xticklabels=class_names,
                 yticklabels=class_names)

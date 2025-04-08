@@ -7,6 +7,7 @@ import argparse
 import pandas as pd
 
 def plot_metrics(metrics_path, output_dir=None):
+    """Plot metrics for a single training run"""
     with open(metrics_path, 'r') as f:
         metrics = json.load(f)
     
@@ -38,66 +39,68 @@ def plot_metrics(metrics_path, output_dir=None):
     plt.savefig(os.path.join(output_dir, 'training_metrics.png'))
     plt.close()
     
-    # Plot GPU metrics
-    gpu_metrics = metrics['gpu_metrics']
-    if gpu_metrics:
-        plt.figure(figsize=(15, 10))
-        
-        # Extract GPU metrics
-        gpu_util = [m['gpu_util'] for m in gpu_metrics]
-        gpu_mem_used = [m['gpu_mem_used'] for m in gpu_metrics]
-        gpu_mem_total = gpu_metrics[0]['gpu_mem_total']  # Total memory is constant
-        gpu_temp = [m['gpu_temp'] for m in gpu_metrics]
-        gpu_power = [m['gpu_power'] for m in gpu_metrics]
-        
-        # Plot GPU Utilization
-        plt.subplot(2, 2, 1)
-        plt.plot(gpu_util)
-        plt.xlabel('Batch (every 10)')
-        plt.ylabel('GPU Utilization (%)')
-        plt.title('GPU Utilization')
-        
-        # Plot GPU Memory Usage
-        plt.subplot(2, 2, 2)
-        plt.plot(gpu_mem_used)
-        plt.axhline(y=gpu_mem_total, color='r', linestyle='--', label='Total Memory')
-        plt.xlabel('Batch (every 10)')
-        plt.ylabel('GPU Memory Usage (MB)')
-        plt.title('GPU Memory Usage')
-        plt.legend()
-        
-        # Plot GPU Temperature
-        plt.subplot(2, 2, 3)
-        plt.plot(gpu_temp)
-        plt.xlabel('Batch (every 10)')
-        plt.ylabel('Temperature (°C)')
-        plt.title('GPU Temperature')
-        
-        # Plot GPU Power Usage
-        plt.subplot(2, 2, 4)
-        plt.plot(gpu_power)
-        plt.xlabel('Batch (every 10)')
-        plt.ylabel('Power Usage (W)')
-        plt.title('GPU Power Usage')
-        
-        plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, 'gpu_metrics.png'))
-        plt.close()
+    # Extract epoch-level GPU metrics
+    epochs = [m['epoch'] for m in metrics['epoch_metrics']]
+    gpu_utils = [m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]
+    gpu_mems = [m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]  # Convert to GB
+    gpu_temps = [m['gpu_metrics']['gpu_temp'] for m in metrics['epoch_metrics']]
+    gpu_powers = [m['gpu_metrics']['gpu_power'] for m in metrics['epoch_metrics']]
+    epoch_times = [m['time'] for m in metrics['epoch_metrics']]
+    batch_times = [m['avg_batch_time'] for m in metrics['epoch_metrics']]
     
-    # Plot batch times
-    plt.figure(figsize=(8, 4))
-    plt.plot(metrics['batch_times'])
-    plt.xlabel('Batch (every 10)')
-    plt.ylabel('Time (seconds)')
-    plt.title('Batch Processing Time')
+    # Plot GPU metrics
+    plt.figure(figsize=(15, 10))
+    
+    plt.subplot(2, 2, 1)
+    plt.plot(epochs, gpu_utils)
+    plt.xlabel('Epoch')
+    plt.ylabel('GPU Utilization (%)')
+    plt.title('Average GPU Utilization per Epoch')
+    
+    plt.subplot(2, 2, 2)
+    plt.plot(epochs, gpu_mems)
+    plt.xlabel('Epoch')
+    plt.ylabel('GPU Memory Usage (GB)')
+    plt.title('Average GPU Memory Usage per Epoch')
+    
+    plt.subplot(2, 2, 3)
+    plt.plot(epochs, gpu_temps)
+    plt.xlabel('Epoch')
+    plt.ylabel('Temperature (°C)')
+    plt.title('Average GPU Temperature per Epoch')
+    
+    plt.subplot(2, 2, 4)
+    plt.plot(epochs, gpu_powers)
+    plt.xlabel('Epoch')
+    plt.ylabel('Power Usage (W)')
+    plt.title('Average GPU Power Usage per Epoch')
+    
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'batch_times.png'))
+    plt.savefig(os.path.join(output_dir, 'gpu_metrics.png'))
+    plt.close()
+    
+    # Plot timing metrics
+    plt.figure(figsize=(12, 4))
+    
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, epoch_times)
+    plt.xlabel('Epoch')
+    plt.ylabel('Time (seconds)')
+    plt.title('Epoch Processing Time')
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, batch_times)
+    plt.xlabel('Epoch')
+    plt.ylabel('Time (seconds)')
+    plt.title('Average Batch Processing Time')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'timing_metrics.png'))
     plt.close()
 
 def plot_comparative_analysis(metrics_files, output_dir=None):
     """Plot comparative analysis of multiple training runs"""
     if output_dir is None:
-        # Create a new directory with timestamp for comparative analysis
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = f'comparative_analysis_{timestamp}'
     os.makedirs(output_dir, exist_ok=True)
@@ -116,7 +119,7 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
         with open(file, 'r') as f:
             metrics = json.load(f)
             # Extract server name from the directory
-            server_name = os.path.basename(os.path.dirname(file)).split('_')[2]  # Get server name from directory
+            server_name = os.path.basename(os.path.dirname(file)).split('_')[2]
             # Use mapping or fallback to server name
             gpu_name = gpu_mapping.get(server_name, f"GPU on {server_name}")
             metrics['gpu_name'] = gpu_name
@@ -148,9 +151,10 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
     # Plot GPU utilization
     plt.subplot(2, 2, 3)
     for metrics in all_metrics:
-        gpu_util = [m['gpu_util'] for m in metrics['gpu_metrics']]
-        plt.plot(gpu_util, label=metrics['gpu_name'])
-    plt.xlabel('Batch (every 10)')
+        gpu_utils = [m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]
+        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
+        plt.plot(epochs, gpu_utils, label=metrics['gpu_name'])
+    plt.xlabel('Epoch')
     plt.ylabel('GPU Utilization (%)')
     plt.title('Comparative GPU Utilization')
     plt.legend()
@@ -158,10 +162,11 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
     # Plot GPU memory usage
     plt.subplot(2, 2, 4)
     for metrics in all_metrics:
-        gpu_mem = [m['gpu_mem_used'] for m in metrics['gpu_metrics']]
-        plt.plot(gpu_mem, label=metrics['gpu_name'])
-    plt.xlabel('Batch (every 10)')
-    plt.ylabel('GPU Memory Usage (MB)')
+        gpu_mems = [m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]
+        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
+        plt.plot(epochs, gpu_mems, label=metrics['gpu_name'])
+    plt.xlabel('Epoch')
+    plt.ylabel('GPU Memory Usage (GB)')
     plt.title('Comparative GPU Memory Usage')
     plt.legend()
     
@@ -169,45 +174,57 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
     plt.savefig(os.path.join(output_dir, 'comparative_metrics.png'))
     plt.close()
     
+    # Plot timing comparison
+    plt.figure(figsize=(12, 5))
+    
+    plt.subplot(1, 2, 1)
+    for metrics in all_metrics:
+        epoch_times = [m['time'] for m in metrics['epoch_metrics']]
+        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
+        plt.plot(epochs, epoch_times, label=metrics['gpu_name'])
+    plt.xlabel('Epoch')
+    plt.ylabel('Time (seconds)')
+    plt.title('Comparative Epoch Processing Time')
+    plt.legend()
+    
+    plt.subplot(1, 2, 2)
+    for metrics in all_metrics:
+        batch_times = [m['avg_batch_time'] for m in metrics['epoch_metrics']]
+        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
+        plt.plot(epochs, batch_times, label=metrics['gpu_name'])
+    plt.xlabel('Epoch')
+    plt.ylabel('Time (seconds)')
+    plt.title('Comparative Average Batch Time')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'comparative_timing.png'))
+    plt.close()
+    
     # Create a summary CSV
     summary_data = []
     for metrics in all_metrics:
-        # Calculate average GPU metrics
-        gpu_metrics = metrics['gpu_metrics']
-        avg_gpu_util = np.mean([m['gpu_util'] for m in gpu_metrics])
-        avg_gpu_mem = np.mean([m['gpu_mem_used'] for m in gpu_metrics])
-        avg_gpu_temp = np.mean([m['gpu_temp'] for m in gpu_metrics])
-        avg_gpu_power = np.mean([m['gpu_power'] for m in gpu_metrics])
-        
-        # Get final training metrics
-        final_train_loss = metrics['train_loss'][-1]
-        final_val_loss = metrics['val_loss'][-1]
-        final_train_acc = metrics['train_acc'][-1]
-        final_val_acc = metrics['val_acc'][-1]
+        final_metrics = metrics['epoch_metrics'][-1]  # Get the last epoch's metrics
         
         summary_data.append({
             'GPU': metrics['gpu_name'],
-            'Final Train Loss': final_train_loss,
-            'Final Val Loss': final_val_loss,
-            'Final Train Acc (%)': final_train_acc,
-            'Final Val Acc (%)': final_val_acc,
-            'Avg GPU Util (%)': avg_gpu_util,
-            'Avg GPU Mem (MB)': avg_gpu_mem,
-            'Avg GPU Temp (°C)': avg_gpu_temp,
-            'Avg GPU Power (W)': avg_gpu_power
+            'Final Train Loss': metrics['train_loss'][-1],
+            'Final Val Loss': metrics['val_loss'][-1],
+            'Final Train Acc (%)': metrics['train_acc'][-1],
+            'Final Val Acc (%)': metrics['val_acc'][-1],
+            'Avg Epoch Time (s)': np.mean([m['time'] for m in metrics['epoch_metrics']]),
+            'Avg Batch Time (s)': np.mean([m['avg_batch_time'] for m in metrics['epoch_metrics']]),
+            'Avg GPU Util (%)': np.mean([m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]),
+            'Avg GPU Mem (GB)': np.mean([m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]),
+            'Avg GPU Temp (°C)': np.mean([m['gpu_metrics']['gpu_temp'] for m in metrics['epoch_metrics']]),
+            'Avg GPU Power (W)': np.mean([m['gpu_metrics']['gpu_power'] for m in metrics['epoch_metrics']]),
+            'Total Time (hours)': metrics['total_time']/3600
         })
     
     df_summary = pd.DataFrame(summary_data)
     df_summary.to_csv(os.path.join(output_dir, 'comparative_summary.csv'), index=False)
-    
-    # Also save individual plots for each run in the same directory
-    for metrics in all_metrics:
-        run_dir = os.path.join(output_dir, metrics['gpu_name'].replace(' ', '_'))
-        os.makedirs(run_dir, exist_ok=True)
-        plot_metrics(metrics_files[all_metrics.index(metrics)], run_dir)
 
 if __name__ == '__main__':
-    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Plot fine-tuning performance metrics')
     parser.add_argument('--metrics_file', type=str, help='Path to the training metrics JSON file')
     parser.add_argument('--metrics_files', type=str, nargs='+', help='Paths to multiple training metrics JSON files for comparative analysis')
