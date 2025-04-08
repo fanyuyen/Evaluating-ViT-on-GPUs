@@ -22,6 +22,23 @@ class GPUMonitor:
         self.gpu_memory = nvmlDeviceGetMemoryInfo(self.handle).total / (1024 ** 3)  # Convert to GB
         self.gpu_compute_capability = nvmlDeviceGetCudaComputeCapability(self.handle)
         self.gpu_uuid = nvmlDeviceGetUUID(self.handle)
+        
+        # Validate that PyTorch and NVML are using the same GPU
+        torch_index = torch.cuda.current_device()
+        torch_device = torch.cuda.get_device_properties(torch_index)
+        torch_uuid = str(torch_device.uuid)
+        nvml_uuid_normalized = self.gpu_uuid[4:] if self.gpu_uuid.startswith('GPU-') else self.gpu_uuid
+        
+        if torch_uuid != nvml_uuid_normalized:
+            raise RuntimeError(
+                f"❌ UUID mismatch!\n"
+                f"  PyTorch device {torch_index} UUID: {torch_uuid}\n"
+                f"  NVML device {gpu_index} UUID: {self.gpu_uuid}\n"
+                f"Make sure you're comparing the same physical GPU."
+            )
+        else:
+            print(f"✅ UUID match confirmed: PyTorch GPU {torch_index} ↔ NVML GPU {gpu_index}")
+        
         print(f"Running on GPU: {self.gpu_name}")
         print(f"GPU Memory: {self.gpu_memory:.1f} GB")
         print(f"Compute Capability: {self.gpu_compute_capability[0]}.{self.gpu_compute_capability[1]}")
@@ -50,7 +67,8 @@ def train_model(model, processor, train_loader, val_loader, num_epochs=10, learn
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
     # Initialize GPU monitor
-    gpu_monitor = GPUMonitor()
+    gpu_monitor = GPUMonitor() # For jin (4070) and tian (2080)
+    #gpu_monitor = GPUMonitor(gpu_index=1) # For huo (A100)
     
     # Create output directory
     hostname = socket.gethostname()
@@ -206,6 +224,6 @@ if __name__ == '__main__':
         processor=processor,
         train_loader=train_loader,
         val_loader=val_loader,
-        num_epochs=10,
+        num_epochs=20,
         learning_rate=0.001
     ) 

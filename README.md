@@ -133,3 +133,71 @@ The CSV output includes:
 - Additional performance metrics
 - Automated report generation
 - Support for distributed testing
+
+# Fine tune on MRI dataset
+## To start fine-tune
+```bash
+python run_finetune.py
+```
+
+## Testing and Performance Analysis
+
+### Testing the Model
+To test a fine-tuned model on the brain tumor MRI dataset:
+
+```bash
+# Test with default settings (uses latest model and epoch 10 checkpoint)
+python test_brain_tumor_mri.py
+
+# Test a specific model directory and checkpoint
+python test_brain_tumor_mri.py --model_dir outputs_finetune_huo_20250407_215953 --checkpoint checkpoint_epoch_20.pt
+```
+
+The script will:
+- Load the specified model checkpoint
+- Run inference on the test dataset
+- Calculate accuracy, precision, recall, and F1 score
+- Generate a confusion matrix
+- Save all metrics and plots to an output directory
+- Monitor and record GPU performance metrics
+
+Output files are saved in a `test_results` directory inside the model directory:
+- `test_metrics.json`: Contains accuracy, precision, recall, F1 score, and GPU metrics
+- `gpu_performance_metrics.csv`: Detailed GPU performance data during testing
+- `confusion_matrix.png`: Visualization of the classification results
+
+For example, if testing a model in `outputs_finetune_huo_20250407_215953`, the results will be saved in:
+```
+outputs_finetune_huo_20250407_215953/
+├── checkpoint_epoch_20.pt
+├── training_metrics.json
+└── test_results/
+    ├── test_metrics.json
+    ├── gpu_performance_metrics.csv
+    └── confusion_matrix.png
+```
+
+### Plotting Training Performance
+To visualize the training performance metrics:
+
+```bash
+# Plot metrics from the latest training run
+python plot_finetune_performance.py
+
+# Plot metrics from a specific file
+python plot_finetune_performance.py --metrics_file outputs_finetune_huo_20250407_215953/training_metrics.json
+```
+
+The script will generate plots showing:
+- Training and validation loss over epochs
+- Training and validation accuracy over epochs
+- GPU utilization during training
+- GPU memory usage
+- GPU temperature
+- GPU power consumption
+- Batch processing times
+
+All plots are saved in a 'plots' subdirectory of the metrics file location:
+- `plots/training_metrics.png`: Training and validation metrics
+- `plots/gpu_metrics.png`: GPU performance metrics
+- `plots/batch_times.png`: Batch processing times

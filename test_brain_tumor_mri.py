@@ -15,6 +15,7 @@ import pandas as pd
 import socket
 import time
 from torchvision import transforms
+import argparse
 
 class GPUMonitor:
     def __init__(self, gpu_index=0):
@@ -52,10 +53,8 @@ def evaluate_model(model, processor, test_loader, class_names):
     # Initialize GPU monitor
     gpu_monitor = GPUMonitor()
     
-    # Create output directory
-    hostname = socket.gethostname()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f'outputs_brain_tumor_test_{hostname}_{timestamp}'
+    # Create output directory inside the model directory
+    output_dir = os.path.join(model_dir, 'test_results')
     os.makedirs(output_dir, exist_ok=True)
     
     all_preds = []
@@ -141,22 +140,34 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
     
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Test brain tumor MRI classification model')
+    parser.add_argument('--model_dir', type=str, help='Directory containing the fine-tuned model checkpoints')
+    parser.add_argument('--checkpoint', type=str, default='checkpoint_epoch_10.pt', 
+                      help='Checkpoint file to load (default: checkpoint_epoch_10.pt)')
+    args = parser.parse_args()
+    
     # Create test dataloader
     test_loader = get_brain_tumor_dataloader(batch_size=32, train=False)
     class_names = test_loader.dataset.classes
     num_classes = len(class_names)
     
-    # Load the latest fine-tuned model
-    output_dirs = [d for d in os.listdir('.') if d.startswith('outputs_finetune_')]
-    if not output_dirs:
-        print("No fine-tuned model found!")
-        exit(1)
+    # Find the model directory
+    if args.model_dir:
+        model_dir = args.model_dir
+    else:
+        # If no directory specified, use the latest one
+        output_dirs = [d for d in os.listdir('.') if d.startswith('outputs_finetune_')]
+        if not output_dirs:
+            print("No fine-tuned model found! Please specify a model directory with --model_dir")
+            exit(1)
+        model_dir = max(output_dirs, key=os.path.getctime)
+        print(f"Using latest model directory: {model_dir}")
     
-    latest_dir = max(output_dirs, key=os.path.getctime)
-    checkpoint_path = os.path.join(latest_dir, 'checkpoint_epoch_10.pt')  # Using the last epoch
+    checkpoint_path = os.path.join(model_dir, args.checkpoint)
     
     if not os.path.exists(checkpoint_path):
-        print(f"Checkpoint not found in {latest_dir}!")
+        print(f"Checkpoint not found: {checkpoint_path}")
         exit(1)
     
     # Load model and processor

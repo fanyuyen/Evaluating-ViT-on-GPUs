@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from datetime import datetime
+import argparse
 
 def plot_metrics(metrics_path):
     with open(metrics_path, 'r') as f:
@@ -92,18 +93,27 @@ def plot_metrics(metrics_path):
     plt.close()
 
 if __name__ == '__main__':
-    # Find the most recent training metrics file
-    output_dirs = [d for d in os.listdir('.') if d.startswith('outputs_finetune_')]
-    if not output_dirs:
-        print("No training output directories found!")
-        exit(1)
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Plot fine-tuning performance metrics')
+    parser.add_argument('--metrics_file', type=str, help='Path to the training metrics JSON file')
+    args = parser.parse_args()
     
-    latest_dir = max(output_dirs, key=os.path.getctime)
-    metrics_path = os.path.join(latest_dir, 'training_metrics.json')
+    # Find the metrics file
+    if args.metrics_file:
+        metrics_path = args.metrics_file
+    else:
+        # If no file specified, use the latest one
+        output_dirs = [d for d in os.listdir('.') if d.startswith('outputs_finetune_')]
+        if not output_dirs:
+            print("No training output directories found! Please specify a metrics file with --metrics_file")
+            exit(1)
+        latest_dir = max(output_dirs, key=os.path.getctime)
+        metrics_path = os.path.join(latest_dir, 'training_metrics.json')
+        print(f"Using metrics from latest directory: {latest_dir}")
     
     if not os.path.exists(metrics_path):
-        print(f"Metrics file not found in {latest_dir}!")
+        print(f"Metrics file not found: {metrics_path}")
         exit(1)
     
     plot_metrics(metrics_path)
-    print(f"Plots saved in {os.path.join(latest_dir, 'plots')}") 
+    print(f"Plots saved in {os.path.join(os.path.dirname(metrics_path), 'plots')}") 
