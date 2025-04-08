@@ -186,6 +186,12 @@ python plot_finetune_performance.py
 
 # Plot metrics from a specific file
 python plot_finetune_performance.py --metrics_file outputs_finetune_huo_20250407_215953/training_metrics.json
+
+# Compare metrics from multiple training runs
+python plot_finetune_performance.py --metrics_files outputs_finetune_huo_20250407_215953/training_metrics.json outputs_finetune_jin_20250407_220321/training_metrics.json
+
+# Specify custom output directory
+python plot_finetune_performance.py --metrics_files file1.json file2.json --output_dir my_comparison_results
 ```
 
 The script will generate plots showing:
@@ -197,7 +203,31 @@ The script will generate plots showing:
 - GPU power consumption
 - Batch processing times
 
-All plots are saved in a 'plots' subdirectory of the metrics file location:
-- `plots/training_metrics.png`: Training and validation metrics
-- `plots/gpu_metrics.png`: GPU performance metrics
-- `plots/batch_times.png`: Batch processing times
+For individual runs, plots are saved in a 'plots' subdirectory of the metrics file location:
+```
+outputs_finetune_huo_20250407_215953/
+└── plots/
+    ├── training_metrics.png
+    ├── gpu_metrics.png
+    └── batch_times.png
+```
+
+For comparative analysis, a new directory is created with timestamp:
+```
+comparative_analysis_20250407_220000/
+├── comparative_metrics.png
+├── comparative_summary.csv
+└── [gpu_name]/
+    ├── training_metrics.png
+    ├── gpu_metrics.png
+    └── batch_times.png
+```
+
+The comparative analysis includes:
+- Training and validation loss comparison (labeled by GPU model)
+- Training and validation accuracy comparison (labeled by GPU model)
+- GPU utilization comparison (labeled by GPU model)
+- GPU memory usage comparison (labeled by GPU model)
+- Average metrics for each run (loss, accuracy, GPU utilization, memory, temperature, power)
+
+The plots will show labels like "A100 - Train", "RTX 4070 - Val", etc., making it easy to compare performance across different GPU models.
