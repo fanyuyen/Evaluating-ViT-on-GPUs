@@ -80,7 +80,7 @@ class InferenceRunner:
         self.model.eval()
         
         # Setup GPU monitor
-        self.gpu_monitor = GPUMonitor() # For jin (4070) and tian (2080)
+        self.gpu_monitor = GPUMonitor() # For jin (4070) and tian/shui (2080)
         #self.gpu_monitor = GPUMonitor(gpu_index=1) # For huo (A100)
         
         # Setup dataloader with proper subset handling
@@ -115,7 +115,13 @@ class InferenceRunner:
         gpu_metrics = []
         latencies = []
 
+        # Reset memory stats before starting
         torch.cuda.reset_peak_memory_stats(self.device)
+        torch.cuda.synchronize()  # Ensure all operations are completed
+        
+        # Get initial NVML memory
+        initial_nvml_mem = self.gpu_monitor.get_metrics()['gpu_mem_used']
+        
         inference_start = time.perf_counter()
 
         with torch.no_grad():
@@ -127,37 +133,37 @@ class InferenceRunner:
                     images = batch["image"]
                     labels = batch["label"]
                 
-                batch_preds = []
-                for image in images:
-                    img_start = time.perf_counter()
-                    
-                    # Ensure image has 3 channels
-                    if image.dim() == 2:
-                        image = image.unsqueeze(0).repeat(3, 1, 1)
-                    elif image.dim() == 3 and image.size(0) == 1:
-                        image = image.repeat(3, 1, 1)
-                    
-                    # Convert to PIL Image and process
-                    image_pil = transforms.ToPILImage()(image)
-                    inputs = self.processor(images=image_pil, return_tensors="pt", do_rescale=False).to(self.device)
-                    outputs = self.model(**inputs)
-                    logits = outputs.logits
-                    pred = logits.argmax(dim=-1).cpu().numpy()
-                    batch_preds.append(pred[0])
-                    
-                    img_end = time.perf_counter()
-                    latencies.append(img_end - img_start)
+                # Process entire batch at once
+                batch_start = time.perf_counter()
                 
-                all_preds.extend(batch_preds)
+                # Convert all images to PIL and process as batch
+                images_pil = [transforms.ToPILImage()(img) for img in images]
+                inputs = self.processor(images=images_pil, return_tensors="pt", do_rescale=False).to(self.device)
+                outputs = self.model(**inputs)
+                logits = outputs.logits
+                preds = logits.argmax(dim=-1).cpu().numpy()
+                
+                batch_end = time.perf_counter()
+                batch_latency = (batch_end - batch_start) / len(images)  # Average latency per image
+                latencies.extend([batch_latency] * len(images))
+                
+                all_preds.extend(preds)
                 all_labels.extend(labels.numpy())
                 gpu_metrics.append(self.gpu_monitor.get_metrics())
 
         inference_end = time.perf_counter()
+        torch.cuda.synchronize()  # Ensure all operations are completed
+        
+        # Get final NVML memory
+        final_nvml_mem = self.gpu_monitor.get_metrics()['gpu_mem_used']
+        nvml_memory_increase = final_nvml_mem - initial_nvml_mem
         
         # Calculate metrics
         total_time = inference_end - inference_start
         num_images = len(self.dataloader.dataset)
         throughput = num_images / total_time
+        
+        # Get peak memory after all operations are complete
         peak_memory_MB = torch.cuda.max_memory_allocated(self.device) / (1024 ** 2)
         
         # Calculate average GPU metrics
@@ -184,6 +190,7 @@ class InferenceRunner:
             'total_time': total_time,
             'throughput': throughput,
             'peak_memory_MB': peak_memory_MB,
+            'nvml_memory_increase_MB': nvml_memory_increase,  # Added NVML memory tracking
             **avg_metrics,
             **latency_stats,
             **gpu_info

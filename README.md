@@ -80,7 +80,8 @@ python plot_performance.py --input_dirs <output_dir1> <output_dir2> ...
 
 For example, to compare results between three machines:
 ```bash
-python plot_performance.py --input_dir outputs_huo_20250407_141715 outputs_jin_20250407_153906 outputs_tian_20250407_141558
+python plot_performance.py --input_dirs outputs_huo_20250407_141715 outputs_jin_20250407_153906 outputs_tian_20250407_141558
+python plot_performance.py --input_dirs outputs_huo_20250408_152341/ outputs_jin_20250408_152556/ outputs_shui_20250408_152539/ --hosts huo jin shui
 ```
 
 The script will:

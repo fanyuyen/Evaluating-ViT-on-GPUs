@@ -119,9 +119,9 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
     
     # Define colors and markers for GPUs
     gpu_colors = {
-        'NVIDIA A100': 'blue',  # Alternative name
-        'NVIDIA GeForce RTX 4070 Ti SUPER': 'green',  # Alternative name
-        'NVIDIA GeForce RTX 2080 SUPER': 'red'  # Alternative name
+        'A100': 'blue',
+        '4070': 'green',
+        '2080': 'red'
     }
     
     markers = ['o', 's', '^', 'D', 'p']
@@ -137,8 +137,13 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
             for j, dataset in enumerate(datasets):
                 df_subset = df_all[(df_all['dataset'] == dataset) & (df_all['gpu_name'] == gpu)]
                 if not df_subset.empty:
-                    # Try to find a matching color, default to gray if not found
-                    color = next((color for name, color in gpu_colors.items() if name in gpu), 'gray')
+                    # Find matching color based on GPU name
+                    color = 'gray'  # Default color
+                    for gpu_key, gpu_color in gpu_colors.items():
+                        if gpu_key in gpu:
+                            color = gpu_color
+                            break
+                    
                     print(f"Using color {color} for GPU: {gpu}")  # Debug print
                     
                     if metric == 'avg_latency':
@@ -161,37 +166,6 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
         plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_combined.png')
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close()
-    
-    # Plot dataset-specific comparisons
-    for dataset in datasets:
-        df_dataset = df_all[df_all['dataset'] == dataset]
-        for metric, ylabel in metrics:
-            if metric not in df_dataset.columns:
-                continue
-                
-            plt.figure(figsize=(10, 6))
-            for i, gpu in enumerate(gpus):
-                df_gpu = df_dataset[df_dataset['gpu_name'] == gpu]
-                if not df_gpu.empty:
-                    color = gpu_colors.get(gpu, 'gray')
-                    if metric == 'avg_latency':
-                        # Convert to milliseconds for latency
-                        plt.plot(df_gpu['batch_size'], df_gpu[metric]*1000, 
-                                marker=markers[i], linewidth=2, color=color, label=gpu)
-                    else:
-                        plt.plot(df_gpu['batch_size'], df_gpu[metric], 
-                                marker=markers[i], linewidth=2, color=color, label=gpu)
-            
-            plt.xlabel('Batch Size')
-            plt.ylabel(ylabel)
-            plt.title(f'Comparative {ylabel} for {dataset}')
-            plt.legend()
-            plt.grid(True)
-            plt.tight_layout()
-            
-            plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_by_gpu_{dataset}.png')
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            plt.close()
 
 def generate_statistics(df_all, output_dirs, hosts=None):
     """Generate and save comparative statistics"""
@@ -223,6 +197,8 @@ def generate_statistics(df_all, output_dirs, hosts=None):
     
     if stats_list:
         stats_df = pd.DataFrame(stats_list)
+        # Remove any duplicate rows
+        stats_df = stats_df.drop_duplicates()
         stats_path = os.path.join(output_dirs['stats'], 'comparative_statistics.csv')
         stats_df.to_csv(stats_path, index=False)
         print(f"\nStatistics saved to {stats_path}")
@@ -243,13 +219,20 @@ def load_results(input_dirs):
             if 'all' not in file_path:  # Skip the combined files
                 try:
                     df = pd.read_csv(file_path)
+                    # Add hostname if not present
+                    if 'hostname' not in df.columns:
+                        hostname = os.path.basename(input_dir).split('_')[1]
+                        df['hostname'] = hostname
                     all_results.append(df)
                     print(f"Loaded {file_path}")
                 except Exception as e:
                     print(f"Error loading {file_path}: {str(e)}")
     
     if all_results:
-        return pd.concat(all_results, ignore_index=True)
+        df_all = pd.concat(all_results, ignore_index=True)
+        # Remove any duplicate rows
+        df_all = df_all.drop_duplicates()
+        return df_all
     else:
         print("No results found!")
         return pd.DataFrame()
