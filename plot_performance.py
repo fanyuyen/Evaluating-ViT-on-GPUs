@@ -94,6 +94,81 @@ def plot_dataset_performance(df, dataset_name, gpu_name, output_dirs):
     plt.close()
     print(f"Generated plots for {dataset_name} on {gpu_name}")
 
+def plot_memory_comparison(df_all, output_dirs):
+    """Generate a box plot comparing memory usage distribution for each dataset across GPUs"""
+    # Get unique datasets and GPUs
+    datasets = df_all['dataset'].unique()
+    gpus = df_all['gpu_name'].unique()
+    
+    # Create a figure with a larger size
+    plt.figure(figsize=(10, 5))
+    
+    # Define colors for GPUs
+    gpu_colors = {
+        'A100': 'blue',
+        '4070': 'green',
+        '2080': 'red'
+    }
+    
+    # Prepare data for box plot
+    box_data = []
+    positions = []
+    labels = []
+    
+    for i, dataset in enumerate(datasets):
+        dataset_data = []
+        for gpu in gpus:
+            df_subset = df_all[(df_all['dataset'] == dataset) & (df_all['gpu_name'] == gpu)]
+            if not df_subset.empty:
+                # Get the maximum memory usage for each batch size
+                max_memory = df_subset['peak_memory_MB'].max()
+                dataset_data.append(max_memory)
+        
+        if dataset_data:  # Only add if we have data
+            box_data.append(dataset_data)
+            positions.append(i)
+            labels.append(dataset)
+    
+    # Create box plot
+    box = plt.boxplot(box_data, 
+                     positions=positions,
+                     widths=0.6,
+                     patch_artist=True,
+                     showfliers=True,
+                     showmeans=True,
+                     meanline=True)
+    
+    # Color the boxes
+    for i, patch in enumerate(box['boxes']):
+        patch.set_facecolor('lightgray')
+        patch.set_alpha(0.5)
+    
+    # # Add individual points with GPU colors
+    # for i, dataset_data in enumerate(box_data):
+    #     for j, value in enumerate(dataset_data):
+    #         gpu = gpus[j]
+    #         color = next((color for key, color in gpu_colors.items() if key in gpu), 'gray')
+    #         plt.scatter(i, value, color=color, s=100, zorder=3)
+    
+    # Customize the plot
+    plt.xlabel('Dataset')
+    plt.ylabel('Peak Memory Usage (MB)')
+    plt.title('Memory Usage Distribution Across GPUs for Each Dataset')
+    plt.xticks(positions, labels)
+    plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+    
+    # Create custom legend
+    legend_elements = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=gpu_colors.get(gpu, 'gray'), 
+                                 markersize=10, label=gpu) for gpu in gpus]
+    plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    plot_path = os.path.join(output_dirs['plots'], 'memory_comparison_by_dataset.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Generated memory comparison plot: {plot_path}")
+
 def plot_comparative_analysis(df_all, output_dirs, hosts=None):
     """Generate and save comparative analysis plots across datasets"""
     datasets = df_all['dataset'].unique()
@@ -166,6 +241,9 @@ def plot_comparative_analysis(df_all, output_dirs, hosts=None):
         plot_path = os.path.join(output_dirs['plots'], f'comparative_{metric}_combined.png')
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close()
+    
+    # Generate the memory comparison plot
+    plot_memory_comparison(df_all, output_dirs)
 
 def generate_statistics(df_all, output_dirs, hosts=None):
     """Generate and save comparative statistics"""
