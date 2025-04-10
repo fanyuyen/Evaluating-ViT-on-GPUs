@@ -125,11 +125,47 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
             metrics['gpu_name'] = gpu_name
             all_metrics.append(metrics)
     
-    # Plot comparative training metrics
-    plt.figure(figsize=(15, 10))
+    # Calculate average metrics for each GPU
+    gpu_names = []
+    avg_train_losses = []
+    avg_val_losses = []
+    avg_train_accs = []
+    avg_val_accs = []
+    avg_gpu_utils = []
+    avg_gpu_mems = []
+    avg_epoch_times = []
+    throughputs = []  # samples per second
     
-    # Plot training loss
-    plt.subplot(2, 2, 1)
+    for metrics in all_metrics:
+        gpu_names.append(metrics['gpu_name'])
+        avg_train_losses.append(np.mean(metrics['train_loss']))
+        avg_val_losses.append(np.mean(metrics['val_loss']))
+        avg_train_accs.append(np.mean(metrics['train_acc']))
+        avg_val_accs.append(np.mean(metrics['val_acc']))
+        
+        gpu_utils = [m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]
+        gpu_mems = [m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]
+        epoch_times = [m['time'] for m in metrics['epoch_metrics']]
+        
+        avg_gpu_utils.append(np.mean(gpu_utils))
+        avg_gpu_mems.append(np.mean(gpu_mems))
+        avg_epoch_time = np.mean(epoch_times)
+        avg_epoch_times.append(avg_epoch_time)
+        
+        # Calculate throughput (samples per second)
+        # Assuming we have the batch size and number of batches per epoch
+        # You might need to adjust these values based on your actual data
+        batch_size = 32  # Adjust this based on your actual batch size
+        batches_per_epoch = 100  # Adjust this based on your actual number of batches per epoch
+        samples_per_epoch = batch_size * batches_per_epoch
+        throughput = samples_per_epoch / avg_epoch_time
+        throughputs.append(throughput)
+    
+    # Create separate bar plots for each metric
+    x = np.arange(len(gpu_names))
+    width = 0.35
+    
+    # Plot training and validation loss
     for metrics in all_metrics:
         plt.plot(metrics['train_loss'], label=f"{metrics['gpu_name']} - Train")
         plt.plot(metrics['val_loss'], '--', label=f"{metrics['gpu_name']} - Val")
@@ -137,9 +173,10 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
     plt.ylabel('Loss')
     plt.title('Comparative Training and Validation Loss')
     plt.legend()
+    plt.savefig(os.path.join(output_dir, 'comparative_loss.png'))
+    plt.close()
     
-    # Plot training accuracy
-    plt.subplot(2, 2, 2)
+    # Plot training and validation accuracy
     for metrics in all_metrics:
         plt.plot(metrics['train_acc'], label=f"{metrics['gpu_name']} - Train")
         plt.plot(metrics['val_acc'], '--', label=f"{metrics['gpu_name']} - Val")
@@ -147,58 +184,59 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
     plt.ylabel('Accuracy (%)')
     plt.title('Comparative Training and Validation Accuracy')
     plt.legend()
-    
-    # Plot GPU utilization
-    plt.subplot(2, 2, 3)
-    for metrics in all_metrics:
-        gpu_utils = [m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]
-        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
-        plt.plot(epochs, gpu_utils, label=metrics['gpu_name'])
-    plt.xlabel('Epoch')
-    plt.ylabel('GPU Utilization (%)')
-    plt.title('Comparative GPU Utilization')
-    plt.legend()
-    
-    # Plot GPU memory usage
-    plt.subplot(2, 2, 4)
-    for metrics in all_metrics:
-        gpu_mems = [m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]
-        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
-        plt.plot(epochs, gpu_mems, label=metrics['gpu_name'])
-    plt.xlabel('Epoch')
-    plt.ylabel('GPU Memory Usage (GB)')
-    plt.title('Comparative GPU Memory Usage')
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'comparative_metrics.png'))
+    plt.savefig(os.path.join(output_dir, 'comparative_accuracy.png'))
     plt.close()
     
-    # Plot timing comparison
-    plt.figure(figsize=(12, 5))
-    
-    plt.subplot(1, 2, 1)
-    for metrics in all_metrics:
-        epoch_times = [m['time'] for m in metrics['epoch_metrics']]
-        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
-        plt.plot(epochs, epoch_times, label=metrics['gpu_name'])
-    plt.xlabel('Epoch')
-    plt.ylabel('Time (seconds)')
-    plt.title('Comparative Epoch Processing Time')
-    plt.legend()
-    
-    plt.subplot(1, 2, 2)
-    for metrics in all_metrics:
-        batch_times = [m['avg_batch_time'] for m in metrics['epoch_metrics']]
-        epochs = [m['epoch'] for m in metrics['epoch_metrics']]
-        plt.plot(epochs, batch_times, label=metrics['gpu_name'])
-    plt.xlabel('Epoch')
-    plt.ylabel('Time (seconds)')
-    plt.title('Comparative Average Batch Time')
-    plt.legend()
-    
+    # Plot GPU utilization
+    bars = plt.bar(x, avg_gpu_utils, width, label='GPU Utilization')
+    plt.xlabel('GPU')
+    plt.ylabel('Average GPU Utilization (%)')
+    plt.title('Average GPU Utilization')
+    plt.xticks(x, gpu_names)
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'comparative_timing.png'))
+    plt.savefig(os.path.join(output_dir, 'avg_gpu_utilization.png'))
+    plt.close()
+    
+    # Plot GPU memory usage
+    bars = plt.bar(x, avg_gpu_mems, width, label='GPU Memory Usage')
+    plt.xlabel('GPU')
+    plt.ylabel('Average GPU Memory Usage (GB)')
+    plt.title('Average GPU Memory Usage')
+    plt.xticks(x, gpu_names)
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'avg_gpu_memory.png'))
+    plt.close()
+    
+    # Plot average epoch processing time
+    bars = plt.bar(x, avg_epoch_times, width, label='Epoch Time')
+    plt.xlabel('GPU')
+    plt.ylabel('Average Epoch Time (seconds)')
+    plt.title('Average Epoch Processing Time')
+    plt.xticks(x, gpu_names)
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'avg_epoch_time.png'))
+    plt.close()
+    
+    # Plot throughput
+    bars = plt.bar(x, throughputs, width, label='Throughput')
+    plt.xlabel('GPU')
+    plt.ylabel('Throughput (samples/second)')
+    plt.title('Average Training Throughput')
+    plt.xticks(x, gpu_names)
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval, round(yval, 2), va='bottom')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'avg_throughput.png'))
     plt.close()
     
     # Create a summary CSV
@@ -208,16 +246,17 @@ def plot_comparative_analysis(metrics_files, output_dir=None):
         
         summary_data.append({
             'GPU': metrics['gpu_name'],
-            'Final Train Loss': metrics['train_loss'][-1],
-            'Final Val Loss': metrics['val_loss'][-1],
-            'Final Train Acc (%)': metrics['train_acc'][-1],
-            'Final Val Acc (%)': metrics['val_acc'][-1],
+            'Avg Train Loss': np.mean(metrics['train_loss']),
+            'Avg Val Loss': np.mean(metrics['val_loss']),
+            'Avg Train Acc (%)': np.mean(metrics['train_acc']),
+            'Avg Val Acc (%)': np.mean(metrics['val_acc']),
             'Avg Epoch Time (s)': np.mean([m['time'] for m in metrics['epoch_metrics']]),
             'Avg Batch Time (s)': np.mean([m['avg_batch_time'] for m in metrics['epoch_metrics']]),
             'Avg GPU Util (%)': np.mean([m['gpu_metrics']['gpu_util'] for m in metrics['epoch_metrics']]),
             'Avg GPU Mem (GB)': np.mean([m['gpu_metrics']['gpu_mem_used']/1024 for m in metrics['epoch_metrics']]),
             'Avg GPU Temp (°C)': np.mean([m['gpu_metrics']['gpu_temp'] for m in metrics['epoch_metrics']]),
             'Avg GPU Power (W)': np.mean([m['gpu_metrics']['gpu_power'] for m in metrics['epoch_metrics']]),
+            'Throughput (samples/s)': throughputs[gpu_names.index(metrics['gpu_name'])],
             'Total Time (hours)': metrics['total_time']/3600
         })
     
