@@ -8,15 +8,13 @@ This project provides a comprehensive benchmarking tool for evaluating GPU perfo
   - CIFAR-10 (10,000 validation images)
   - ImageNet-100 (5,000 validation images)
   - Food101 (25,250 validation images)
-- Comprehensive GPU metrics collection:
+- GPU metrics collection:
   - GPU utilization
   - Memory usage
-  - Temperature
   - Power consumption
-  - Latency statistics
-- Automated performance testing across different batch sizes
-- Detailed CSV output with all metrics
-- NVTX profiling support for detailed performance analysis
+- Performance testing across different batch sizes
+- CSV output with all metrics
+- NVTX profiling support
 
 ## Requirements
 
