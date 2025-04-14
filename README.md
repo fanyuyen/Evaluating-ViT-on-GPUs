@@ -1,6 +1,6 @@
 # GPU Performance Benchmarking for Vision Transformers
 
-This project provides a comprehensive benchmarking tool for evaluating GPU performance when running inference with Vision Transformer (ViT) models across different datasets and batch sizes.
+This project is for evaluating GPU performance when running inference with Vision Transformer (ViT) models across different datasets and batch sizes.
 
 ## Features
 
